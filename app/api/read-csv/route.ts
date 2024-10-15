@@ -10,24 +10,25 @@ interface Item {
 export async function GET() {
   const csvPath = path.join(process.cwd(), "data", "data.csv");
 
-  return new Promise((resolve, reject) => {
+  try {
+    const data = await fs.promises.readFile(csvPath, "utf-8");
     const results: Item[] = [];
 
-    fs.createReadStream(csvPath)
-      .on("data", (chunk) => {
-        const lines = chunk.toString().split("\n");
+    const lines = data.split("\n");
+    for (const line of lines) {
+      const [createdAt, filename] = line.trim().split(";");
 
-        for (const line of lines) {
-          const [createdAt, filename] = line.trim().split(";");
+      if (createdAt && filename) {
+        results.push({ createdAt, filename });
+      }
+    }
 
-          if (createdAt && filename) {
-            results.push({ createdAt, filename });
-          }
-        }
-      })
-      .on("end", () => {
-        resolve(NextResponse.json({ data: results }));
-      })
-      .on("error", (error) => reject(error));
-  });
+    return NextResponse.json({ data: results });
+  } catch (error) {
+    console.error("Error reading CSV file:", error);
+    return NextResponse.json(
+      { error: "Error reading CSV file" },
+      { status: 500 }
+    );
+  }
 }
