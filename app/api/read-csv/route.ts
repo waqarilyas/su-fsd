@@ -1,20 +1,33 @@
-// read
-import csv from "csv-parser";
 import * as fs from "fs";
 import { NextResponse } from "next/server";
 import path from "path";
+
+interface Item {
+  createdAt: string;
+  filename: string;
+}
 
 export async function GET() {
   const csvPath = path.join(process.cwd(), "data", "data.csv");
 
   return new Promise((resolve, reject) => {
-    const results = [];
+    const results: Item[] = [];
+
     fs.createReadStream(csvPath)
-      .pipe(csv())
-      .on("data", (data) => results.push(data))
+      .on("data", (chunk) => {
+        const lines = chunk.toString().split("\n");
+
+        for (const line of lines) {
+          const [createdAt, filename] = line.trim().split(";");
+
+          if (createdAt && filename) {
+            results.push({ createdAt, filename });
+          }
+        }
+      })
       .on("end", () => {
-        console.log(results);
         resolve(NextResponse.json({ data: results }));
-      });
+      })
+      .on("error", (error) => reject(error));
   });
 }
